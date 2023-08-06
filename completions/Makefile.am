@@ -210,6 +210,7 @@ bashcomp_DATA = 2to3 \
 		jsonschema \
 		k3b \
 		kcov \
+		_keyring \
 		kill \
 		killall \
 		kldload \
@@ -821,6 +822,7 @@ CLEANFILES = \
 	rpm2txz \
 	rpmbuild \
 	rpmbuild-md5 \
+	_rtx \
 	s390-koji \
 	sbcl-mt \
 	scp \
@@ -1009,6 +1011,7 @@ symlinks: $(DATA)
 		_qrpc \
 		_random \
 		_rclone \
+		_rtx \
 		_skaffold \
 		_sshi \
 		_ssh-inscribe \
