@@ -1229,7 +1229,7 @@ _comp_variable_assignments()
     case $prev in
         TZ)
             cur=/usr/share/zoneinfo/$cur
-            _comp_compgen -a filedir
+            _comp_compgen_filedir
             if ((${#COMPREPLY[@]})); then
                 for i in "${!COMPREPLY[@]}"; do
                     if [[ ${COMPREPLY[i]} == *.tab ]]; then
@@ -1445,11 +1445,8 @@ _comp_compgen_help__parse()
         option=${option/"${BASH_REMATCH[1]}"/"${BASH_REMATCH[2]}"}
     fi
 
-    option=${option%%[<{().[]*}
-    option=${option/=*/=}
-    [[ $option ]] || return 1
-
-    _options+=("$option")
+    [[ $option =~ ^([^=<{().[]|\.[A-Za-z0-9])+=? ]] &&
+        _options+=("$BASH_REMATCH")
 }
 
 # Parse GNU style help output of the given command and generate and store
@@ -1751,10 +1748,11 @@ _expand()
             ;;
         ~*)
             _comp_compgen -v COMPREPLY tilde &&
-                eval "COMPREPLY[0]=$(printf ~%q "${COMPREPLY[0]#\~}")"
-            return ${#COMPREPLY[@]}
+                eval "COMPREPLY[0]=$(printf ~%q "${COMPREPLY[0]#\~}")" &&
+                return 1
             ;;
     esac
+    return 0
 }
 
 # Process ID related functions.
@@ -2052,7 +2050,7 @@ _comp_compgen_allowed_groups()
 # @since 2.12
 _comp_selinux_users()
 {
-    _comp_compgen -a split -- "$(semanage user -nl 2>/dev/null |
+    _comp_compgen_split -- "$(semanage user -nl 2>/dev/null |
         awk '{ print $1 }')"
 }
 
@@ -2722,7 +2720,7 @@ complete -F _comp_command aoss command "do" else eval exec ltrace nice nohup pad
 _comp_root_command()
 {
     local PATH=$PATH:/sbin:/usr/sbin:/usr/local/sbin
-    local root_command=$1
+    local _comp_root_command=$1
     _comp_command
 }
 complete -F _comp_root_command fakeroot gksu gksudo kdesudo really
@@ -2732,7 +2730,7 @@ complete -F _comp_root_command fakeroot gksu gksudo kdesudo really
 # @since 2.12
 _comp_as_root()
 {
-    [[ $EUID -eq 0 || ${root_command-} ]]
+    [[ $EUID -eq 0 || ${_comp_root_command-} ]]
 }
 
 # Complete on available commands, subject to `no_empty_cmd_completion`.
@@ -2821,7 +2819,7 @@ _filedir_xspec()
     _comp_quote_compgen "$cur"
     local quoted=$ret
 
-    local xspec=${_xspecs[${1##*/}]} tmp
+    local xspec=${_xspecs[${1##*/}]}
     local -a toks
     _comp_compgen -v toks -c "$quoted" -- -d
 
