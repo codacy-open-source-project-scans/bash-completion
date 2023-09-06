@@ -316,6 +316,7 @@ bashcomp_DATA = 2to3 \
 		pidof \
 		pine \
 		ping \
+		_pipenv \
 		pkg-config \
 		pkg-get \
 		pkg_delete \
@@ -539,6 +540,8 @@ CLEANFILES = \
 	autossh \
 	autoupdate \
 	avahi-browse-domains \
+	_black \
+	_blackd \
 	bmake \
 	bsdtar \
 	btdownloadcurses.py \
@@ -586,6 +589,7 @@ CLEANFILES = \
 	f95 \
 	filebucket \
 	firefox-esr \
+	_flask \
 	freeciv-gtk2 \
 	freeciv-gtk3 \
 	freeciv-sdl \
@@ -638,6 +642,7 @@ CLEANFILES = \
 	host \
 	hping \
 	hping3 \
+	_httpx \
 	_hugo \
 	iceweasel \
 	identify \
@@ -1108,6 +1113,8 @@ symlinks: $(DATA)
 		alpine
 	$(ss) ping \
 		ping4 ping6
+	$(ss) _pipenv \
+		_black _blackd _flask _httpx
 	$(ss) pkg-config \
 		pkgconf
 	$(ss) pkg_delete \
