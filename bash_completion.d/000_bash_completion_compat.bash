@@ -10,8 +10,10 @@ _comp_deprecate_func 2.12 _root_command _comp_root_command
 _comp_deprecate_func 2.12 _xfunc _comp_xfunc
 _comp_deprecate_func 2.12 _upvars _comp_upvars
 _comp_deprecate_func 2.12 _get_comp_words_by_ref _comp_get_words
+_comp_deprecate_func 2.12 _known_hosts_real _comp_compgen_known_hosts
 _comp_deprecate_func 2.12 _longopt _comp_longopt
 _comp_deprecate_func 2.12 __ltrim_colon_completions _comp_ltrim_colon_completions
+_comp_deprecate_func 2.12 _variables _comp_compgen_variables
 _comp_deprecate_func 2.12 _signals _comp_compgen_signals
 _comp_deprecate_func 2.12 _mac_addresses _comp_compgen_mac_addresses
 _comp_deprecate_func 2.12 _available_interfaces _comp_compgen_available_interfaces
@@ -21,14 +23,20 @@ _comp_deprecate_func 2.12 _kernel_versions _comp_compgen_kernel_versions
 _comp_deprecate_func 2.12 _uids _comp_compgen_uids
 _comp_deprecate_func 2.12 _gids _comp_compgen_gids
 _comp_deprecate_func 2.12 _xinetd_services _comp_compgen_xinetd_services
-_comp_deprecate_func 2.12 _terms _comp_compgen_terms
+_comp_deprecate_func 2.12 _services _comp_compgen_services
+_comp_deprecate_func 2.12 _bashcomp_try_faketty _comp_try_faketty
+_comp_deprecate_func 2.12 _expand _comp_expand
 _comp_deprecate_func 2.12 _pids _comp_compgen_pids
 _comp_deprecate_func 2.12 _pgids _comp_compgen_pgids
 _comp_deprecate_func 2.12 _pnames _comp_compgen_pnames
 _comp_deprecate_func 2.12 _modules _comp_compgen_kernel_modules
 _comp_deprecate_func 2.12 _installed_modules _comp_compgen_inserted_kernel_modules
-_comp_deprecate_func 2.12 _usergroup _comp_compgen_usergroup
+_comp_deprecate_func 2.12 _usergroup _comp_compgen_usergroups
 _comp_deprecate_func 2.12 _complete_as_root _comp_as_root
+_comp_deprecate_func 2.12 __load_completion _comp_load
+
+# @deprecated 2.12 Use `_comp_xspecs`
+declare -Ag _xspecs
 
 # Backwards compatibility for compat completions that use have().
 # @deprecated 1.90 should no longer be used; generally not needed with
@@ -56,7 +64,7 @@ quote_readline()
     local ret
     _comp_quote_compgen "$1"
     printf %s "$ret"
-} # quote_readline()
+}
 
 # This function is the same as `_comp_quote_compgen`, but receives the second
 # argument specifying the variable name to store the result.
@@ -165,7 +173,7 @@ _get_cword()
             printf "%s" "${cur:0:index}"
         fi
     fi
-} # _get_cword()
+}
 
 # Get word previous to the current word.
 # This is a good alternative to `prev=${COMP_WORDS[COMP_CWORD-1]}' because bash4
@@ -356,6 +364,26 @@ _ncpus()
     printf %s "$ret"
 }
 
+# Expand variable starting with tilde (~).
+# We want to expand ~foo/... to /home/foo/... to avoid problems when
+# word-to-complete starting with a tilde is fed to commands and ending up
+# quoted instead of expanded.
+# Only the first portion of the variable from the tilde up to the first slash
+# (~../) is expanded.  The remainder of the variable, containing for example
+# a dollar sign variable ($) or asterisk (*) is not expanded.
+#
+# @deprecated 2.12 Use `_comp_expand_tilde`.  The new function receives the
+# value instead of a variable name as $1 and always returns the result to the
+# variable `ret`.
+__expand_tilde_by_ref()
+{
+    [[ ${1+set} ]] || return 0
+    [[ $1 == ret ]] || local ret
+    _comp_expand_tilde "${!1-}"
+    # shellcheck disable=SC2059
+    [[ $1 == ret ]] || printf -v "$1" "$ret"
+}
+
 # @deprecated 2.12 Use `_comp_compgen -a cd_devices`
 _cd_devices()
 {
@@ -380,6 +408,12 @@ _usb_ids()
     _comp_compgen -a usb_ids
 }
 
+# @deprecated 2.12 Use `_comp_compgen -a terms`
+_terms()
+{
+    _comp_compgen -a terms
+}
+
 # @deprecated 2.12 Use `_comp_compgen -c "${prefix:-$cur}" allowed_users`
 _allowed_users()
 {
@@ -390,6 +424,12 @@ _allowed_users()
 _allowed_groups()
 {
     _comp_compgen -c "${1:-$cur}" allowed_groups
+}
+
+# @deprecated 2.12 Use `_comp_compgen -a shells`
+_shells()
+{
+    _comp_compgen -a shells
 }
 
 # @deprecated 2.12 Use `_comp_compgen -a fstypes`
@@ -443,4 +483,14 @@ _count_args()
     done
 }
 
+# @deprecated 2.12 Use `_comp_load -D -- CommandName` to load the completion,
+# or use `_comp_complete_load` as a completion function specified to `complete
+# -F`.
+_completion_loader()
+{
+    # We call `_comp_complete_load` instead of `_comp_load -D` in case that
+    # `_completion_loader` is used without an argument or `_completion_loader`
+    # is specified to `complete -F` by a user.
+    _comp_complete_load "$@"
+}
 # ex: filetype=sh
