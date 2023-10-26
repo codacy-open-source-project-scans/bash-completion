@@ -88,7 +88,7 @@ EOF
 EOF
 }
 
-# Truncate the non-unique filepaths in COMPRELY to only generate unique
+# Truncate the non-unique filepaths in COMPREPLY to only generate unique
 # directories or files.  This function discards the files under subdirectories
 # unless the path is unique under each subdirectory and instead generate the
 # subdirectory path.  For example, when there are two candidates, "abc/def" and
@@ -187,7 +187,7 @@ _comp_cmd_make()
         # before we check for makefiles, see if a path was specified
         # with -C/--directory
         for ((i = 1; i < ${#words[@]}; i++)); do
-            if [[ ${words[i]} == -@(C|-directory) ]]; then
+            if [[ ${words[i]} == @(-${noargopts}C|--directory) ]]; then
                 # Expand tilde expansion
                 local ret
                 _comp_dequote "${words[i + 1]-}" &&
@@ -200,7 +200,7 @@ _comp_cmd_make()
         # before we scan for targets, see if a Makefile name was
         # specified with -f/--file/--makefile
         for ((i = 1; i < ${#words[@]}; i++)); do
-            if [[ ${words[i]} == -@(f|-?(make)file) ]]; then
+            if [[ ${words[i]} == @(-${noargopts}f|--?(make)file) ]]; then
                 # Expand tilde expansion
                 local ret
                 _comp_dequote "${words[i + 1]-}" &&
