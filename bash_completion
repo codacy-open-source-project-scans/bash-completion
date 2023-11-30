@@ -1199,7 +1199,7 @@ _comp_delimited()
         delimiter=$1
         shift
     fi
-    [[ $cur == *$delimiter* ]] && prefix=${cur%"$delimiter"*}$delimiter
+    [[ $cur == *"$delimiter"* ]] && prefix=${cur%"$delimiter"*}$delimiter
 
     if [[ $deduplicate ]]; then
         # We could construct a -X pattern to feed to compgen, but that'd
@@ -1382,7 +1382,8 @@ _comp_initialize()
                 esac
                 ;;
         esac
-        cur=${cur##"$redir"}
+        # shellcheck disable=SC2295 # redir is a pattern
+        cur=${cur##$redir}
         _comp_compgen_filedir "$xspec"
         return 1
     fi
@@ -1702,7 +1703,7 @@ _comp_compgen_available_interfaces()
         else
             ifconfig -a || ip -c=never link show || ip link show
         fi
-    } 2>/dev/null | awk \
+    } 2>/dev/null | _comp_awk \
         '/^[^ \t]/ { if ($1 ~ /^[0-9]+:/) { print $2 } else { print $1 } }')" &&
         _comp_compgen -U generated set "${generated[@]}"
 }
@@ -1943,7 +1944,7 @@ _comp_compgen_services()
         systemctl list-units --full --all ||
             systemctl list-unit-files
     } 2>/dev/null |
-        awk '$1 ~ /\.service$/ { sub("\\.service$", "", $1); print $1 }')
+        _comp_awk '$1 ~ /\.service$/ { sub("\\.service$", "", $1); print $1 }')
     _comp_split -la services "$_generated"
 
     if [[ -x /sbin/upstart-udev-bridge ]]; then
@@ -1961,8 +1962,8 @@ _comp_compgen_services()
 # one, because we set it up eagerly as completer for scripts in sysv init dirs
 # below.
 #
-# TODO:API: rename per conventions, rework to use vars rather than outputting
-_service()
+# @since 2.12
+_comp_complete_service()
 {
     local cur prev words cword comp_args
     _comp_initialize -- "$@" || return
@@ -1981,7 +1982,7 @@ _service()
             "${sysvdirs[0]}/${prev##*/}" 2>/dev/null) start stop"
     fi
 } &&
-    complete -F _service service
+    complete -F _comp_complete_service service
 
 _comp__init_set_up_service_completions()
 {
@@ -1990,7 +1991,7 @@ _comp__init_set_up_service_completions()
         for svcdir in "${sysvdirs[@]}"; do
             _comp_expand_glob svcs '"$svcdir"/!($_comp_backup_glob)'
             for svc in "${svcs[@]}"; do
-                [[ -x $svc ]] && complete -F _service "$svc"
+                [[ -x $svc ]] && complete -F _comp_complete_service "$svc"
             done
         done
     unset -f "$FUNCNAME"
@@ -2016,7 +2017,7 @@ _comp_compgen_kernel_modules()
 _comp_compgen_inserted_kernel_modules()
 {
     _comp_compgen -c "${1:-$cur}" split -- "$(PATH="$PATH:/sbin" lsmod |
-        awk '{if (NR != 1) print $1}')"
+        _comp_awk '{if (NR != 1) print $1}')"
 }
 
 # This function completes on user or user:group format; as for chown and cpio.
@@ -2097,7 +2098,7 @@ _comp_compgen_allowed_groups()
 _comp_compgen_selinux_users()
 {
     _comp_compgen_split -- "$(semanage user -nl 2>/dev/null |
-        awk '{ print $1 }')"
+        _comp_awk '{ print $1 }')"
 }
 
 # This function completes on valid shells
@@ -2124,14 +2125,14 @@ _comp_compgen_fstypes()
     if [[ -e /proc/filesystems ]]; then
         # Linux
         _fss="$(cut -d$'\t' -f2 /proc/filesystems)
-             $(awk '! /\*/ { print $NF }' /etc/filesystems 2>/dev/null)"
+             $(_comp_awk '! /\*/ { print $NF }' /etc/filesystems 2>/dev/null)"
     else
         # Generic
-        _fss="$(awk '/^[ \t]*[^#]/ { print $3 }' /etc/fstab 2>/dev/null)
-             $(awk '/^[ \t]*[^#]/ { print $3 }' /etc/mnttab 2>/dev/null)
-             $(awk '/^[ \t]*[^#]/ { print $4 }' /etc/vfstab 2>/dev/null)
-             $(awk '{ print $1 }' /etc/dfs/fstypes 2>/dev/null)
-             $(lsvfs 2>/dev/null | awk '$1 !~ /^(Filesystem|[^a-zA-Z])/ { print $1 }')
+        _fss="$(_comp_awk '/^[ \t]*[^#]/ { print $3 }' /etc/fstab 2>/dev/null)
+             $(_comp_awk '/^[ \t]*[^#]/ { print $3 }' /etc/mnttab 2>/dev/null)
+             $(_comp_awk '/^[ \t]*[^#]/ { print $4 }' /etc/vfstab 2>/dev/null)
+             $(_comp_awk '{ print $1 }' /etc/dfs/fstypes 2>/dev/null)
+             $(lsvfs 2>/dev/null | _comp_awk '$1 !~ /^(Filesystem|[^a-zA-Z])/ { print $1 }')
              $([[ -d /etc/fs ]] && command ls /etc/fs)"
     fi
 
@@ -2289,7 +2290,7 @@ _comp_count_args()
 # @since 2.12
 _comp_compgen_pci_ids()
 {
-    _comp_compgen_split -- "$(PATH="$PATH:/sbin" lspci -n | awk '{print $3}')"
+    _comp_compgen_split -- "$(PATH="$PATH:/sbin" lspci -n | _comp_awk '{print $3}')"
 }
 
 # This function completes on USB IDs
@@ -2297,7 +2298,7 @@ _comp_compgen_pci_ids()
 # @since 2.12
 _comp_compgen_usb_ids()
 {
-    _comp_compgen_split -- "$(PATH="$PATH:/sbin" lsusb | awk '{print $6}')"
+    _comp_compgen_split -- "$(PATH="$PATH:/sbin" lsusb | _comp_awk '{print $6}')"
 }
 
 # CD device names
@@ -2325,11 +2326,11 @@ _comp_compgen_terms()
         command sed -ne 's/^\([^[:space:]#|]\{2,\}\)|.*/\1/p' /etc/termcap
         {
             toe -a || toe
-        } | awk '{ print $1 }'
+        } | _comp_awk '{ print $1 }'
         _comp_expand_glob dirs '/{etc,lib,usr/lib,usr/share}/terminfo/?'
         ((${#dirs[@]})) &&
             find "${dirs[@]}" -type f -maxdepth 1 |
-            awk -F/ '{ print $NF }'
+            _comp_awk -F / '{ print $NF }'
     } 2>/dev/null)"
 }
 
@@ -2353,8 +2354,8 @@ _comp_try_faketty()
 
 # This function provides simple user@host completion
 #
-# TODO:API: rename per conventions
-_user_at_host()
+# @since 2.12
+_comp_complete_user_at_host()
 {
     local cur prev words cword comp_args
     _comp_initialize -n : -- "$@" || return
@@ -2366,19 +2367,19 @@ _user_at_host()
         compopt -o nospace
     fi
 }
-shopt -u hostcomplete && complete -F _user_at_host talk ytalk finger
+shopt -u hostcomplete && complete -F _comp_complete_user_at_host talk ytalk finger
 
 # NOTE: Using this function as a helper function is deprecated.  Use
 #       `_comp_compgen_known_hosts' instead.
-# TODO:API: rename per conventions
-_known_hosts()
+# @since 2.12
+_comp_complete_known_hosts()
 {
     local cur prev words cword comp_args
     _comp_initialize -n : -- "$@" || return
 
-    # NOTE: Using `_known_hosts' as a helper function and passing options to
-    #       `_known_hosts' is deprecated: Use `_comp_compgen_known_hosts'
-    #       instead.
+    # NOTE: Using `_known_hosts' (the old name of `_comp_complete_known_hosts')
+    #       as a helper function and passing options to `_known_hosts' is
+    #       deprecated: Use `_comp_compgen_known_hosts' instead.
     local -a options=()
     [[ ${1-} == -a || ${2-} == -a ]] && options+=(-a)
     [[ ${1-} == -c || ${2-} == -c ]] && options+=(-c)
@@ -2440,7 +2441,7 @@ _comp__included_ssh_config_files()
     done
 }
 
-# Helper function for completing _known_hosts.
+# Helper function for completing _comp_complete_known_hosts.
 # This function performs host completion based on ssh's config and known_hosts
 # files, as well as hostnames reported by avahi-browse if
 # BASH_COMPLETION_KNOWN_HOSTS_WITH_AVAHI is set to a non-empty value.
@@ -2533,7 +2534,7 @@ _comp_compgen_known_hosts__impl()
         # TODO(?): try to make known hosts files with more than one consecutive
         #          spaces in their name work (watch out for ~ expansion
         #          breakage! Alioth#311595)
-        if _comp_split -l tmpkh "$(awk 'sub("^[ \t]*([Gg][Ll][Oo][Bb][Aa][Ll]|[Uu][Ss][Ee][Rr])[Kk][Nn][Oo][Ww][Nn][Hh][Oo][Ss][Tt][Ss][Ff][Ii][Ll][Ee][ \t=]+", "") { print $0 }' "${config[@]}" | sort -u)"; then
+        if _comp_split -l tmpkh "$(_comp_awk 'sub("^[ \t]*([Gg][Ll][Oo][Bb][Aa][Ll]|[Uu][Ss][Ee][Rr])[Kk][Nn][Oo][Ww][Nn][Hh][Oo][Ss][Tt][Ss][Ff][Ii][Ll][Ee][ \t=]+", "") { print $0 }' "${config[@]}" | sort -u)"; then
             local tmpkh2 j ret
             for i in "${tmpkh[@]}"; do
                 # First deal with quoted entries...
@@ -2628,7 +2629,7 @@ _comp_compgen_known_hosts__impl()
         type avahi-browse &>/dev/null; then
         # Some old versions of avahi-browse reportedly didn't have -k
         # (even if mentioned in the manpage); those we do not support any more.
-        local generated=$(avahi-browse -cprak 2>/dev/null | awk -F';' \
+        local generated=$(avahi-browse -cprak 2>/dev/null | _comp_awk -F ';' \
             '/^=/ && $5 ~ /^_(ssh|workstation)\._tcp$/ { print $7 }' |
             sort -u)
         _comp_compgen -av known_hosts -- -P "$prefix" -S "$suffix" -W '$generated'
@@ -2636,7 +2637,7 @@ _comp_compgen_known_hosts__impl()
 
     # Add hosts reported by ruptime.
     if type ruptime &>/dev/null; then
-        local generated=$(ruptime 2>/dev/null | awk '!/^ruptime:/ { print $1 }')
+        local generated=$(ruptime 2>/dev/null | _comp_awk '!/^ruptime:/ { print $1 }')
         _comp_compgen -av known_hosts -- -W '$generated'
     fi
 
@@ -2663,7 +2664,7 @@ _comp_compgen_known_hosts__impl()
 
     _comp_compgen -v known_hosts -c "$prefix$cur" ltrim_colon "${known_hosts[@]}"
 }
-complete -F _known_hosts traceroute traceroute6 \
+complete -F _comp_complete_known_hosts traceroute traceroute6 \
     fping fping6 telnet rsh rlogin ftp dig drill mtr ssh-installkeys showmount
 
 # Convert the word index in `words` to the index in `COMP_WORDS`.
@@ -2761,7 +2762,7 @@ _comp_command_offset()
                 if ((${#COMPREPLY[@]} == 0)); then
                     # XXX will probably never happen as long as completion loader loads
                     #     *something* for every command thrown at it ($cspec != empty)
-                    _minimal "${args[@]}"
+                    _comp_complete_minimal "${args[@]}"
                 fi
             elif [[ $cspec == *' -F '* ]]; then
                 # complete -F <function>
@@ -2865,7 +2866,7 @@ _comp_compgen_commands()
 }
 
 # @since 2.12
-_comp_longopt()
+_comp_complete_longopt()
 {
     local cur prev words cword was_split comp_args
     _comp_initialize -s -- "$@" || return
@@ -2915,7 +2916,7 @@ _comp_longopt()
     fi
 }
 # makeinfo and texi2dvi are defined elsewhere.
-complete -F _comp_longopt \
+complete -F _comp_complete_longopt \
     a2ps awk base64 bash bc bison cat chroot colordiff cp \
     csplit cut date df diff dir du enscript env expand fmt fold gperf \
     grep grub head irb ld ldd less ln ls m4 mkdir mkfifo mknod \
@@ -2926,12 +2927,17 @@ complete -F _comp_longopt \
 # @since 2.12
 declare -Ag _comp_xspecs
 
-# TODO:API: rename per conventions
-_filedir_xspec()
+# @since 2.12
+_comp_complete_filedir_xspec()
 {
     local cur prev words cword comp_args
     _comp_initialize -- "$@" || return
+    _comp_compgen_filedir_xspec "$1"
+}
 
+# @since 2.12
+_comp_compgen_filedir_xspec()
+{
     _comp_compgen_tilde && return
 
     local ret
@@ -2960,10 +2966,10 @@ _filedir_xspec()
         ${#toks[@]} -lt 1 ]] &&
         _comp_compgen -av toks -c "$quoted" -- -f
 
-    if ((${#toks[@]} != 0)); then
-        compopt -o filenames
-        COMPREPLY=("${toks[@]}")
-    fi
+    ((${#toks[@]})) || return 1
+
+    compopt -o filenames
+    _comp_compgen -RU toks -- -W '"${toks[@]}"'
 }
 
 _comp__init_install_xspec()
@@ -3035,7 +3041,7 @@ unset -f _comp__init_install_xspec
 
 # Minimal completion to use as fallback in _comp_complete_load.
 # TODO:API: rename per conventions
-_minimal()
+_comp_complete_minimal()
 {
     local cur prev words cword comp_args
     _comp_initialize -- "$@" || return
@@ -3043,7 +3049,7 @@ _minimal()
 }
 # Complete the empty string to allow completion of '>', '>>', and '<' on < 4.3
 # https://lists.gnu.org/archive/html/bug-bash/2012-01/msg00045.html
-complete -F _minimal ''
+complete -F _comp_complete_minimal ''
 
 # @since 2.12
 _comp_load()
@@ -3168,10 +3174,10 @@ _comp_load()
 
     # Look up simple "xspec" completions
     [[ -v _comp_xspecs[$cmdname] || -v _xspecs[$cmdname] ]] &&
-        complete -F _filedir_xspec "$cmdname" "$backslash$cmdname" && return 0
+        complete -F _comp_complete_filedir_xspec "$cmdname" "$backslash$cmdname" && return 0
 
     if [[ $flag_fallback_default ]]; then
-        complete -F _minimal -- "$origcmd" && return 0
+        complete -F _comp_complete_minimal -- "$origcmd" && return 0
     fi
 
     return 1
@@ -3206,6 +3212,22 @@ _comp_xfunc()
     declare -F "$xfunc_name" &>/dev/null || _comp_load "$1"
     "$xfunc_name" "${@:3}"
 }
+
+# Call a POSIX-compatible awk.  Solaris awk is not POSIX-compliant, but Solaris
+# provides a POSIX-compatible version through /usr/xpg4/bin/awk.  We switch the
+# implementation to /usr/xpg4/bin/awk in Solaris if any.
+# @since 2.12
+if [[ $OSTYPE == *solaris* && -x /usr/xpg4/bin/awk ]]; then
+    _comp_awk()
+    {
+        /usr/xpg4/bin/awk "$@"
+    }
+else
+    _comp_awk()
+    {
+        command awk "$@"
+    }
+fi
 
 # source compat completion directory definitions
 _comp__init_compat_dirs=()
