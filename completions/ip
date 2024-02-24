@@ -207,7 +207,7 @@ _comp_cmd_ip()
                 get)
                     # TODO
                     ;;
-                a | add | d | del | change | append | r | replace | monitor)
+                a | add | d | del | change | append | r | replace)
                     if [[ $prev == via ]]; then
                         _comp_compgen_split -- "$(
                             {
@@ -232,7 +232,7 @@ _comp_cmd_ip()
                 *)
                     ((cword == subcword)) &&
                         _comp_compgen -- -W 'help list flush get add del change
-                            append replace monitor'
+                            append replace'
                     ;;
             esac
             ;;
@@ -357,7 +357,14 @@ _comp_cmd_ip()
                 all) ;;
                 *)
                     ((cword == subcword)) &&
-                        _comp_compgen -- -W 'help all'
+                        _comp_compgen_split -- "help all $(
+                            {
+                                "$1" -c=never monitor help || "$1" monitor help
+                            } 2>&1 | command sed -e \
+                                '/OBJECTS := /,/[^|]$/!d' -e \
+                                's/OBJECTS := *//' -e \
+                                's/|//g'
+                        )"
                     ;;
             esac
             ;;

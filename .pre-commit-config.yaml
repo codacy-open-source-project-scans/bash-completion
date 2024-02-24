@@ -43,7 +43,7 @@ repos:
         pass_filenames: false
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.2.0
+    rev: v0.2.2
     hooks:
       - id: ruff
         types: [text]
@@ -83,7 +83,7 @@ repos:
         files: ^(helpers/perl|.+\.p[ml])$
 
   - repo: https://github.com/jackdewinter/pymarkdown
-    rev: v0.9.16
+    rev: v0.9.17
     hooks:
       - id: pymarkdown
         entry: pymarkdown
@@ -98,7 +98,7 @@ repos:
       - id: check-case-conflict
 
   - repo: https://github.com/crate-ci/typos
-    rev: v1.18.0
+    rev: v1.18.2
     hooks:
       - id: typos
         exclude: ^(CHANGELOG\.md|test/(test-cmd-list\.txt|fixtures/.+))$
